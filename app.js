@@ -2,6 +2,8 @@ const express = require('express');
 const app = express();
 app.use(express.json()); // Pour lire le JSON dans le corps des requêtes
 
+const events = [];
+
 app.get('/events', (req, res) => {
     res.json({ message: "Bienvenue sur l'API Events !" });
 });
