@@ -8,29 +8,52 @@ on:
 
 # 3. La liste des tâches (Jobs)
 jobs:
-  verification:
-    # On choisit le système d'exploitation du robot
+  # ── JOB 1 : Tests unitaires backend (Jest + Supertest) ─────────────────────
+  tests-backend:
     runs-on: ubuntu-latest
-
-    # La suite d'actions à exécuter
     steps:
-      # A. Récupérer le code du dépôt
       - name: Checkout du code
         uses: actions/checkout@v4
 
-      # B. Installer Node.js sur la machine du robot
       - name: Installation de Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm' # Le robot prépare le terrain (il sort les outils du coffre)
+          cache: 'npm'
 
-      # C. Installer les dépendances (npm install)
       - name: Installation des dépendances
         run: npm install
 
-    # LA LIGNE QUI CHANGE TOUT :
-      - name: Exécuter les tests avec Jest
+      - name: Exécuter les tests backend avec Jest
         run: npx jest
 
-  
+  # ── JOB 2 : Tests E2E frontend (Playwright) ────────────────────────────────
+  tests-frontend:
+    runs-on: ubuntu-latest
+    needs: tests-backend  # Ne lance le front que si le back passe
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Installation de Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Installation des dépendances
+        run: npm install
+
+      - name: Installation des navigateurs Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Exécuter les tests E2E avec Playwright
+        run: npx playwright test
+
+      - name: Upload du rapport Playwright (en cas d'échec)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

@@ -101,6 +101,15 @@ app.put('/events/:id', upload.single('image'), (req, res) => {
     res.json(events[index]);
 });
 
+// DELETE /events/reset : Vider tous les événements (tests uniquement)
+app.delete('/events/reset', (req, res) => {
+    if (process.env.NODE_ENV === 'production') {
+        return res.status(403).json({ error: 'Interdit en production' });
+    }
+    events.length = 0;
+    res.status(204).send();
+});
+
 // DELETE /events/:id : Supprimer un événement
 app.delete('/events/:id', (req, res) => {
     const id = parseInt(req.params.id);
