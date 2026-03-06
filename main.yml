@@ -1,0 +1,36 @@
+# 1. Nom de votre orchestrateur
+name: Pipeline CI API Events
+
+# 2. Le Déclencheur (Trigger) : Quand le robot doit-il s'allumer ?
+on:
+  push:
+    branches: [ "main" ] # Dès qu'on push sur la branche main
+
+# 3. La liste des tâches (Jobs)
+jobs:
+  verification:
+    # On choisit le système d'exploitation du robot
+    runs-on: ubuntu-latest
+
+    # La suite d'actions à exécuter
+    steps:
+      # A. Récupérer le code du dépôt
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      # B. Installer Node.js sur la machine du robot
+      - name: Installation de Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm' # Le robot prépare le terrain (il sort les outils du coffre)
+
+      # C. Installer les dépendances (npm install)
+      - name: Installation des dépendances
+        run: npm install
+
+    # LA LIGNE QUI CHANGE TOUT :
+      - name: Exécuter les tests avec Jest
+        run: npx jest
+
+  
