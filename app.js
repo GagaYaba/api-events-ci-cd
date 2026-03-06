@@ -1,15 +1,38 @@
 const express = require('express');
+const path = require('path');
+const fs = require('fs');
+const multer = require('multer');
 const app = express();
-app.use(express.json()); // Pour lire le JSON dans le corps des requêtes
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
+
+const uploadsDir = path.join(__dirname, 'public', 'uploads');
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => cb(null, uploadsDir),
+    filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
+});
+
+const upload = multer({
+    storage,
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+        if (!file.mimetype.startsWith('image/')) {
+            return cb(new Error('Seules les images sont acceptées'));
+        }
+        cb(null, true);
+    }
+});
 
 const events = [];
 
 app.get('/events', (req, res) => {
-    res.json({ message: "Bienvenue sur l'API Events !" });
+    res.json(events);
 });
 
 // POST /events : Créer un nouvel événement
-app.post('/events', (req, res) => {
+app.post('/events', upload.single('image'), (req, res) => {
     const newEvent = req.body;
 
     // --- LOGIQUE MÉTIER (À tester via CI/CD !) ---
@@ -37,13 +60,16 @@ app.post('/events', (req, res) => {
 
     // Ajout de l'événement (Simulation ID auto-incrémenté)
     newEvent.id = events.length + 1;
+    if (req.file) {
+        newEvent.imageUrl = '/uploads/' + req.file.filename;
+    }
     events.push(newEvent);
 
     res.status(201).json(newEvent);
 });
 
 // PUT /events/:id : Modifier un événement existant
-app.put('/events/:id', (req, res) => {
+app.put('/events/:id', upload.single('image'), (req, res) => {
     const id = parseInt(req.params.id);
     const index = events.findIndex(e => e.id === id);
 
@@ -63,6 +89,12 @@ app.put('/events/:id', (req, res) => {
 
     if (eventDate < today) {
         return res.status(400).json({ error: "La date ne peut pas être dans le passé" });
+    }
+
+    if (req.file) {
+        updated.imageUrl = '/uploads/' + req.file.filename;
+    } else {
+        updated.imageUrl = events[index].imageUrl;
     }
 
     events[index] = { ...events[index], ...updated };

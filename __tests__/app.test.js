@@ -2,10 +2,10 @@ const request = require('supertest');
 const app = require('../app');
 
 describe('GET /events', () => {
-    it('devrait retourner un message de bienvenue', async () => {
+    it('devrait retourner un tableau d\'événements', async () => {
         const res = await request(app).get('/events');
         expect(res.statusCode).toBe(200);
-        expect(res.body).toHaveProperty('message');
+        expect(Array.isArray(res.body)).toBe(true);
     });
 });
 
