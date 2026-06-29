@@ -168,6 +168,7 @@ Les captures d’écran ci-dessous présentent les éléments demandés pour l�
 
 * Service PostgreSQL visible dans les logs CI
 ![PostgreSQL](.github/workflows/ci.yml)
+![PostgreSQL](docs/screenshots/03-ci-postgres.png)
 
 * Tests lances avec coverage
 * Artifact `test-report-backend` visible dans GitHub Actions
