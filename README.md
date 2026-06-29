@@ -129,11 +129,9 @@ La validation manuelle de la production est configuree dans GitHub via les regle
 Secrets et environnements a configurer dans GitHub :
 
 * environnement `staging`
-
-  * secret `RENDER_DEPLOY_HOOK`
+* secret `RENDER_DEPLOY_HOOK`
 * environnement `production`
-
-  * required reviewer active
+* required reviewer active
 
 ## Variables d’environnement nécessaires
 
