@@ -27,6 +27,15 @@ const upload = multer({
 
 const events = [];
 
+app.get('/health', (req, res) => {
+    res.status(200).json({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        env: process.env.NODE_ENV || 'development',
+        version: process.env.npm_package_version || '1.0.0'
+    });
+});
+
 app.get('/events', (req, res) => {
     res.json(events);
 });
