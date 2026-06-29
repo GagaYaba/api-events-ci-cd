@@ -7,6 +7,24 @@ on:
 jobs:
   tests-backend:
     runs-on: ubuntu-latest
+    env:
+      API_PASSWORD: ${{ secrets.API_PASSWORD }}
+      DATABASE_URL: postgresql://test:test@localhost:5432/test
+      NODE_ENV: test
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: test
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -21,7 +39,15 @@ jobs:
         run: npm ci
 
       - name: Run backend tests
-        run: npm test
+        run: npm test -- --coverage
+
+      - name: Upload rapport de tests
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report-backend
+          path: coverage/
+          retention-days: 7
 
   tests-frontend:
     runs-on: ubuntu-latest
