@@ -114,8 +114,26 @@ npm test -- --coverage
 Tester le script de vérification d’environnement en local :
 
 ```bash
-DATABASE_URL="postgresql://test:test@localhost:5432/test" API_PASSWORD="test-password" NODE_ENV="test" bash scripts/check-env.sh
+DATABASE_URL="<your-production-database-url>" API_PASSWORD="<your-api-password>" NODE_ENV="production" bash scripts/check-env.sh
 ```
+
+## Phase 5 - Deploiement staging / production
+
+Le workflow `.github/workflows/deploy.yml` configure deux jobs :
+
+* `deploy-staging` : declenche automatiquement le deploiement staging via un deploy hook Render.
+* `deploy-production` : depend du staging avec `needs: deploy-staging` et utilise l'environnement GitHub `production`.
+
+La validation manuelle de la production est configuree dans GitHub via les regles de protection de l'environnement `production`.
+
+Secrets et environnements a configurer dans GitHub :
+
+* environnement `staging`
+
+  * secret `RENDER_DEPLOY_HOOK`
+* environnement `production`
+
+  * required reviewer active
 
 ## Variables d’environnement nécessaires
 
@@ -135,9 +153,4 @@ Settings → Secrets and variables → Actions → New repository secret
 
 Les prochaines phases prévues sont :
 
-* création d’un Dockerfile
-* publication de l’image Docker sur GHCR
-* ajout de Dependabot
-* ajout d’un scan de sécurité Trivy
-* mise en place d’un déploiement staging / production
 * configuration d’UptimeRobot pour surveiller `/health`
