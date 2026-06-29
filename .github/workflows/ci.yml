@@ -38,6 +38,21 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Verifier service PostgreSQL
+        run: |
+          echo "Conteneurs Docker actifs :"
+          docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"
+
+          POSTGRES_CONTAINER_ID=$(docker ps --filter "publish=5432" --format "{{.ID}}" | head -n 1)
+
+          if [ -z "$POSTGRES_CONTAINER_ID" ]; then
+            echo "ERREUR : aucun conteneur PostgreSQL expose sur le port 5432"
+            exit 1
+          fi
+
+          echo "Conteneur PostgreSQL detecte : $POSTGRES_CONTAINER_ID"
+          docker exec "$POSTGRES_CONTAINER_ID" pg_isready -U test -d test
+
       - name: Verifier les variables d'environnement
         run: |
           chmod +x scripts/check-env.sh

@@ -167,6 +167,7 @@ Les captures d’écran ci-dessous présentent les éléments demandés pour l�
 ![Cache npm](docs/screenshots/02-ci-cache-npm.png)
 
 * Service PostgreSQL visible dans les logs CI
+![PostgreSQL](.github/workflows/ci.yml)
 
 * Tests lances avec coverage
 * Artifact `test-report-backend` visible dans GitHub Actions
