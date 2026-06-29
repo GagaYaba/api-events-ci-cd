@@ -91,6 +91,13 @@ Le script vérifie la présence des variables suivantes :
 
 Il est exécuté dans la CI avant les tests backend afin d’échouer rapidement si une variable importante est absente.
 
+## Phase 4 - Docker / GHCR / Trivy / Dependabot
+
+* Dockerfile present a la racine du projet.
+* Image Docker publiee sur GHCR avec les tags `latest` et SHA.
+* Scan Trivy visible dans les logs du workflow `build-publish`.
+* Dependabot configure pour npm et GitHub Actions.
+
 ## Commandes utiles
 
 Installer les dépendances :
@@ -129,7 +136,7 @@ La validation manuelle de la production est configuree dans GitHub via les regle
 Secrets et environnements a configurer dans GitHub :
 
 * environnement `staging`
-* secret `RENDER_DEPLOY_HOOK`
+* secret `RENDER_DEPLOY_HOOK=<your-render-deploy-hook-url>`
 * environnement `production`
 * required reviewer active
 
@@ -156,6 +163,14 @@ Le monitor doit etre de type HTTP(s), avec un intervalle de 5 minutes et une ale
 
 Cette configuration permet de detecter automatiquement si l'API staging devient indisponible.
 
+Preuves UptimeRobot a fournir :
+
+* dashboard UptimeRobot en statut UP
+* URL surveillee : `https://<render-staging-url>/health`
+* monitor HTTP(s)
+* intervalle 5 minutes
+* alerte email activee
+
 ## Preuves a fournir pour l'examen
 
 * Pipeline CI verte avec cache npm
@@ -171,14 +186,25 @@ Cette configuration permet de detecter automatiquement si l'API staging devient 
 * Production bloquee en attente d'approbation
 * Production validee manuellement
 * Route `/health` accessible sur Render
+* Dashboard UptimeRobot en statut UP
 * Monitor UptimeRobot configure sur `/health`
 
 ## Variables d’environnement nécessaires
 
-Pour que la CI fonctionne correctement, le secret GitHub suivant doit être créé :
+Pour que la CI et le deploiement fonctionnent correctement, ces valeurs doivent etre configurees dans GitHub avec des placeholders, jamais de vraies valeurs dans le repo.
+
+Secrets GitHub Actions :
 
 ```text
-API_PASSWORD
+API_PASSWORD=<your-api-password>
+DATABASE_URL=<your-production-database-url>
+NODE_ENV=production
+```
+
+Secret d'environnement staging :
+
+```text
+RENDER_DEPLOY_HOOK=<your-render-deploy-hook-url>
 ```
 
 Dans GitHub :
