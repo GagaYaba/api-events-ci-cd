@@ -4,10 +4,6 @@ Projet Node.js / Express réalisé dans le cadre de l’examen pratique CI/CD De
 
 L’objectif du projet est de faire évoluer une API REST existante en ajoutant progressivement des bonnes pratiques DevOps : intégration continue, tests, sécurité, Docker, déploiement et observabilité.
 
-## État actuel du projet
-
-À ce stade, les premières phases de préparation et de CI ont été réalisées.
-
 ### Phase 0 — Préparation du workflow CI
 
 Le workflow GitHub Actions principal a été préparé et stabilisé.
@@ -121,7 +117,7 @@ npm test -- --coverage
 Tester le script de vérification d’environnement en local :
 
 ```bash
-DATABASE_URL="<your-production-database-url>" API_PASSWORD="<your-api-password>" NODE_ENV="production" bash scripts/check-env.sh
+DATABASE_URL="<production-database-url>" API_PASSWORD="<api-password>" NODE_ENV="production" bash scripts/check-env.sh
 ```
 
 ## Phase 5 - Deploiement staging / production
@@ -136,7 +132,7 @@ La validation manuelle de la production est configuree dans GitHub via les regle
 Secrets et environnements a configurer dans GitHub :
 
 * environnement `staging`
-* secret `RENDER_DEPLOY_HOOK=<your-render-deploy-hook-url>`
+* secret `RENDER_DEPLOY_HOOK=<render-deploy-hook-url>`
 * environnement `production`
 * required reviewer active
 
@@ -163,31 +159,50 @@ Le monitor doit etre de type HTTP(s), avec un intervalle de 5 minutes et une ale
 
 Cette configuration permet de detecter automatiquement si l'API staging devient indisponible.
 
-Preuves UptimeRobot a fournir :
-
-* dashboard UptimeRobot en statut UP
-* URL surveillee : `https://<render-staging-url>/health`
-* monitor HTTP(s)
-* intervalle 5 minutes
-* alerte email activee
-
-## Preuves a fournir pour l'examen
+## Preuves de validation
+Les captures d’écran ci-dessous présentent les éléments demandés pour l’examen CI/CD DevOps.
 
 * Pipeline CI verte avec cache npm
+![Pipeline CI](docs/screenshots/01-ci-success.png)
+![Cache npm](docs/screenshots/02-ci-cache-npm.png)
+
 * Service PostgreSQL visible dans les logs CI
+
 * Tests lances avec coverage
 * Artifact `test-report-backend` visible dans GitHub Actions
+![Coverage Artifact](docs/screenshots/04-ci-coverage-artifact.png)
+
 * Image Docker publiee sur GHCR avec les tags `latest` et SHA
+![Docker](docs/screenshots/05-ghcr-package-tags.png)
+
 * Scan Trivy visible dans les logs
+![Trivy](docs/screenshots/06-trivy-logs.png)
+
 * Dependabot configure
+![Dependabot configure](.github/dependabot.yml)
+
 * Secrets GitHub Actions crees
+![Secrets](docs/screenshots/08-github-secrets.png)
+
 * Workflow Deploy declenche
+![Workflow](docs/screenshots/09-deploy-workflow.png)
+
 * Deploiement staging reussi via Render Deploy Hook
+![Render Deploy Hook](docs/screenshots/10-render-deploy-hook.png)
+
 * Production bloquee en attente d'approbation
+![Waiting approval](docs/screenshots/11-production-waiting-approval.png)
+
 * Production validee manuellement
+![Approved](docs/screenshots/12-production-approved.png)
+
 * Route `/health` accessible sur Render
+![Health](docs/screenshots/13-health-render.png)
+
 * Dashboard UptimeRobot en statut UP
 * Monitor UptimeRobot configure sur `/health`
+![UptimeRobot](docs/screenshots/14-uptimerobot-up.png)
+
 
 ## Variables d’environnement nécessaires
 
@@ -196,15 +211,15 @@ Pour que la CI et le deploiement fonctionnent correctement, ces valeurs doivent 
 Secrets GitHub Actions :
 
 ```text
-API_PASSWORD=<your-api-password>
-DATABASE_URL=<your-production-database-url>
+API_PASSWORD=<api-password>
+DATABASE_URL=<production-database-url>
 NODE_ENV=production
 ```
 
 Secret d'environnement staging :
 
 ```text
-RENDER_DEPLOY_HOOK=<your-render-deploy-hook-url>
+RENDER_DEPLOY_HOOK=<render-deploy-hook-url>
 ```
 
 Dans GitHub :
