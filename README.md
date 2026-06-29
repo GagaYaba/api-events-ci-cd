@@ -133,6 +133,46 @@ Secrets et environnements a configurer dans GitHub :
 * environnement `production`
 * required reviewer active
 
+## Phase 6 - Observabilite avec UptimeRobot
+
+La route `GET /health` permet de verifier que l'API est disponible.
+
+Elle retourne un JSON avec :
+
+* `status`
+* `timestamp`
+* `env`
+* `version`
+
+Un monitor UptimeRobot doit etre configure manuellement sur l'URL staging de l'API, avec le chemin `/health`.
+
+Exemple :
+
+```text
+https://<render-staging-url>/health
+```
+
+Le monitor doit etre de type HTTP(s), avec un intervalle de 5 minutes et une alerte email.
+
+Cette configuration permet de detecter automatiquement si l'API staging devient indisponible.
+
+## Preuves a fournir pour l'examen
+
+* Pipeline CI verte avec cache npm
+* Service PostgreSQL visible dans les logs CI
+* Tests lances avec coverage
+* Artifact `test-report-backend` visible dans GitHub Actions
+* Image Docker publiee sur GHCR avec les tags `latest` et SHA
+* Scan Trivy visible dans les logs
+* Dependabot configure
+* Secrets GitHub Actions crees
+* Workflow Deploy declenche
+* Deploiement staging reussi via Render Deploy Hook
+* Production bloquee en attente d'approbation
+* Production validee manuellement
+* Route `/health` accessible sur Render
+* Monitor UptimeRobot configure sur `/health`
+
 ## Variables d’environnement nécessaires
 
 Pour que la CI fonctionne correctement, le secret GitHub suivant doit être créé :
@@ -147,8 +187,3 @@ Dans GitHub :
 Settings → Secrets and variables → Actions → New repository secret
 ```
 
-## Prochaines étapes
-
-Les prochaines phases prévues sont :
-
-* configuration d’UptimeRobot pour surveiller `/health`
