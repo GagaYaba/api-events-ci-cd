@@ -1,6 +1,18 @@
 const request = require('supertest');
 const app = require('../app');
 
+describe('GET /health', () => {
+    it('doit retourner status ok avec code 200', async () => {
+        const res = await request(app).get('/health');
+
+        expect(res.statusCode).toBe(200);
+        expect(res.body.status).toBe('ok');
+        expect(res.body.timestamp).toBeDefined();
+        expect(res.body.env).toBeDefined();
+        expect(res.body.version).toBeDefined();
+    });
+});
+
 describe('GET /events', () => {
     it('devrait retourner un tableau d\'événements', async () => {
         const res = await request(app).get('/events');
