@@ -5,6 +5,10 @@ on:
     branches: [main, exam/cicd]
   workflow_dispatch:
 
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   deploy-staging:
     runs-on: ubuntu-latest
@@ -12,8 +16,31 @@ jobs:
     steps:
       - name: Deploy to staging (Render)
         run: |
-          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
+          curl -fsS -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
           echo "Deployed to staging"
+
+      - name: Health check staging
+        env:
+          STAGING_HEALTH_URL: ${{ vars.STAGING_HEALTH_URL }}
+        run: |
+          HEALTH_URL="${STAGING_HEALTH_URL:-https://api-events-staging.onrender.com/health}"
+          echo "Waiting for staging health at $HEALTH_URL"
+          sleep 20
+
+          for i in {1..20}; do
+            RESPONSE="$(curl -fsS "$HEALTH_URL" || true)"
+
+            if RESPONSE="$RESPONSE" node -e "try { const r = JSON.parse(process.env.RESPONSE || '{}'); process.exit(r.status === 'ok' && r.db === 'ok' ? 0 : 1); } catch { process.exit(1); }"; then
+              echo "Staging health check OK"
+              exit 0
+            fi
+
+            echo "Staging pas encore pret, tentative $i/20"
+            sleep 10
+          done
+
+          echo "Staging health check failed"
+          exit 1
 
   deploy-production:
     needs: deploy-staging

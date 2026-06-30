@@ -162,23 +162,43 @@ Depuis la phase PostgreSQL, une base PostgreSQL doit être disponible avant les 
 
 Le workflow `.github/workflows/ci.yml` lance les tests backend et frontend sur `push` et `pull_request`.
 
+La concurrency annule les anciens runs CI sur une même branche lorsqu'un nouveau commit arrive :
+
+```yaml
+group: ci-${{ github.ref }}
+cancel-in-progress: true
+```
+
 * `actions/setup-node@v4` avec Node.js 20 et cache npm.
 * Installation avec `npm ci`.
+* Audit npm non bloquant avec `npm audit --audit-level=high`.
 * Service PostgreSQL `postgres:16` pour les tests backend.
 * Service PostgreSQL `postgres:16` aussi pour Playwright, car `server.js` démarre avec PostgreSQL.
 * Vérification des variables via `scripts/check-env.sh`.
 * Tests backend avec `npm test -- --coverage`.
 * Upload du dossier `coverage/` comme artifact `test-report-backend` avec `if: always()`.
+* Upload du rapport Playwright comme artifact `playwright-report`, incluant `playwright-report/` et `test-results/`, avec `if: always()`.
+
+L'audit npm est volontairement non bloquant pour remonter les vulnérabilités `high` sans rendre la CI rouge tant que leur correction n'est pas traitée dans une phase dédiée.
 
 ### Docker / GHCR
 
 Le workflow `.github/workflows/build-publish.yml` construit l'image Docker et la publie sur GHCR.
+
+La concurrency annule les anciens builds Docker sur une même branche :
+
+```yaml
+group: docker-${{ github.ref }}
+cancel-in-progress: true
+```
 
 * Login GHCR avec `GITHUB_TOKEN`.
 * Permission `packages: write`.
 * Tag `latest` pour la dernière image publiée.
 * Tag SHA pour identifier précisément une version de commit.
 * Nom d'image converti en minuscules avant publication.
+
+Sur `pull_request`, un job séparé vérifie uniquement que le Dockerfile build correctement. Aucune image n'est poussée vers GHCR, aucun tag `latest` n'est publié, et la permission `packages: write` n'est pas demandée.
 
 ### DevSecOps
 
@@ -192,9 +212,19 @@ Le workflow `.github/workflows/build-publish.yml` construit l'image Docker et la
 Le workflow `.github/workflows/deploy.yml` prévoit :
 
 * déploiement staging via `RENDER_DEPLOY_HOOK` ;
+* health check automatique du staging après le deploy hook Render ;
 * environnement GitHub `staging` ;
 * job production dépendant du staging avec `needs: deploy-staging` ;
 * environnement GitHub `production`, prévu pour une approbation manuelle via GitHub Environment.
+
+La concurrency du déploiement empêche plusieurs déploiements simultanés sur la même branche sans annuler automatiquement une exécution déjà en cours :
+
+```yaml
+group: deploy-${{ github.ref }}
+cancel-in-progress: false
+```
+
+Après le deploy hook Render, GitHub Actions vérifie `/health` avec plusieurs tentatives. La réponse attendue doit contenir `status: "ok"` et `db: "ok"`. L'URL peut être configurée avec la variable GitHub Actions `STAGING_HEALTH_URL`, avec fallback vers `https://api-events-staging.onrender.com/health`.
 
 ## PostgreSQL sur Render staging
 

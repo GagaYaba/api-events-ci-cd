@@ -3,10 +3,32 @@ name: "Build & Publish Docker"
 on:
   push:
     branches: [main, exam/cicd]
+  pull_request:
   workflow_dispatch:
 
+concurrency:
+  group: docker-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  docker-build-pr:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build Docker image without push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          tags: api-events-ci-cd:pr-${{ github.event.pull_request.number }}
+
   docker:
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: read
