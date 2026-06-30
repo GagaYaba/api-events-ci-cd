@@ -2,6 +2,8 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
+const { query } = require('./db');
+
 const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -19,118 +21,262 @@ const upload = multer({
     limits: { fileSize: 5 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
         if (!file.mimetype.startsWith('image/')) {
-            return cb(new Error('Seules les images sont acceptées'));
+            return cb(new Error('Seules les images sont acceptees'));
         }
         cb(null, true);
     }
 });
 
-const events = [];
+const EVENT_SELECT = `
+    SELECT
+        id,
+        title,
+        to_char(date, 'YYYY-MM-DD') AS date,
+        category,
+        place,
+        nb_participants AS "nbParticipants",
+        image_url AS "imageUrl"
+    FROM events
+`;
 
-app.get('/health', (req, res) => {
-    res.status(200).json({
-        status: 'ok',
-        timestamp: new Date().toISOString(),
-        env: process.env.NODE_ENV || 'development',
-        version: process.env.npm_package_version || '1.0.0'
-    });
-});
+const REQUIRED_FIELDS_ERROR = 'Le titre, la date, la categorie, le lieu et le nombre de participants sont obligatoires';
+const PAST_DATE_ERROR = 'La date ne peut pas etre dans le passe';
+const PARTICIPANTS_ERROR = 'Le nombre de participants doit etre un entier strictement positif';
+const NOT_FOUND_ERROR = 'Evenement introuvable';
 
-app.get('/events', (req, res) => {
-    res.json(events);
-});
+function mapEvent(row) {
+    return {
+        id: row.id,
+        title: row.title,
+        date: row.date,
+        category: row.category,
+        place: row.place,
+        nbParticipants: row.nbParticipants,
+        imageUrl: row.imageUrl
+    };
+}
 
-// POST /events : Créer un nouvel événement
-app.post('/events', upload.single('image'), (req, res) => {
-    const newEvent = req.body;
+function isMissing(value) {
+    return value === undefined || value === null || String(value).trim() === '';
+}
 
-    // --- LOGIQUE MÉTIER (À tester via CI/CD !) ---
-
-    // 1. Validation basique
-    if (!newEvent.title || !newEvent.date || !newEvent.category || !newEvent.place || !newEvent.nbParticipants) {
-        return res.status(400).json({
-            error: "Le titre, la date, la catégorie, le lieu et le nombre de participants sont obligatoires"
-        });
+function parsePositiveInteger(value) {
+    const parsed = Number(value);
+    if (!Number.isInteger(parsed) || parsed <= 0) {
+        return null;
     }
 
-    // 2. Validation Logique : Pas d'événement dans le passé
-    const eventDate = new Date(newEvent.date);
+    return parsed;
+}
+
+function parseEventId(value) {
+    const parsed = Number(value);
+    if (!Number.isInteger(parsed) || parsed <= 0) {
+        return null;
+    }
+
+    return parsed;
+}
+
+function validateEventPayload(payload) {
+    if (
+        isMissing(payload.title) ||
+        isMissing(payload.date) ||
+        isMissing(payload.category) ||
+        isMissing(payload.place) ||
+        isMissing(payload.nbParticipants)
+    ) {
+        return { error: REQUIRED_FIELDS_ERROR };
+    }
+
+    const nbParticipants = parsePositiveInteger(payload.nbParticipants);
+    if (nbParticipants === null) {
+        return { error: PARTICIPANTS_ERROR };
+    }
+
+    const eventDate = new Date(`${payload.date}T00:00:00`);
+    if (Number.isNaN(eventDate.getTime())) {
+        return { error: PAST_DATE_ERROR };
+    }
+
     const today = new Date();
-    // On retire l'heure pour comparer uniquement les jours
     today.setHours(0, 0, 0, 0);
 
     if (eventDate < today) {
-        return res.status(400).json({
-            error: "La date ne peut pas être dans le passé"
+        return { error: PAST_DATE_ERROR };
+    }
+
+    return {
+        event: {
+            title: String(payload.title).trim(),
+            date: payload.date,
+            category: String(payload.category).trim(),
+            place: String(payload.place).trim(),
+            nbParticipants
+        }
+    };
+}
+
+function handleServerError(res, error) {
+    console.error('Database operation failed:', error.message);
+    return res.status(500).json({ error: 'Erreur serveur' });
+}
+
+app.get('/health', async (req, res) => {
+    try {
+        await query('SELECT 1');
+
+        res.status(200).json({
+            status: 'ok',
+            db: 'ok',
+            timestamp: new Date().toISOString(),
+            env: process.env.NODE_ENV || 'development',
+            version: process.env.npm_package_version || '1.0.0'
         });
+    } catch (error) {
+        return handleServerError(res, error);
     }
-
-    // --- FIN LOGIQUE ---
-
-    // Ajout de l'événement (Simulation ID auto-incrémenté)
-    newEvent.id = events.length + 1;
-    if (req.file) {
-        newEvent.imageUrl = '/uploads/' + req.file.filename;
-    }
-    events.push(newEvent);
-
-    res.status(201).json(newEvent);
 });
 
-// PUT /events/:id : Modifier un événement existant
-app.put('/events/:id', upload.single('image'), (req, res) => {
-    const id = parseInt(req.params.id);
-    const index = events.findIndex(e => e.id === id);
-
-    if (index === -1) {
-        return res.status(404).json({ error: "Événement introuvable" });
+app.get('/events', async (req, res) => {
+    try {
+        const result = await query(`${EVENT_SELECT} ORDER BY id ASC`);
+        res.json(result.rows.map(mapEvent));
+    } catch (error) {
+        return handleServerError(res, error);
     }
-
-    const updated = req.body;
-
-    if (!updated.title || !updated.date || !updated.category || !updated.place || !updated.nbParticipants) {
-        return res.status(400).json({ error: "Le titre, la date, la catégorie, le lieu et le nombre de participants sont obligatoires" });
-    }
-
-    const eventDate = new Date(updated.date);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    if (eventDate < today) {
-        return res.status(400).json({ error: "La date ne peut pas être dans le passé" });
-    }
-
-    if (req.file) {
-        updated.imageUrl = '/uploads/' + req.file.filename;
-    } else {
-        updated.imageUrl = events[index].imageUrl;
-    }
-
-    events[index] = { ...events[index], ...updated };
-    res.json(events[index]);
 });
 
-// DELETE /events/reset : Vider tous les événements (tests uniquement)
-app.delete('/events/reset', (req, res) => {
+// POST /events : Creer un nouvel evenement
+app.post('/events', upload.single('image'), async (req, res) => {
+    const validation = validateEventPayload(req.body);
+    if (validation.error) {
+        return res.status(400).json({ error: validation.error });
+    }
+
+    const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
+
+    try {
+        const result = await query(
+            `
+                INSERT INTO events (title, date, category, place, nb_participants, image_url)
+                VALUES ($1, $2, $3, $4, $5, $6)
+                RETURNING
+                    id,
+                    title,
+                    to_char(date, 'YYYY-MM-DD') AS date,
+                    category,
+                    place,
+                    nb_participants AS "nbParticipants",
+                    image_url AS "imageUrl"
+            `,
+            [
+                validation.event.title,
+                validation.event.date,
+                validation.event.category,
+                validation.event.place,
+                validation.event.nbParticipants,
+                imageUrl
+            ]
+        );
+
+        res.status(201).json(mapEvent(result.rows[0]));
+    } catch (error) {
+        return handleServerError(res, error);
+    }
+});
+
+// PUT /events/:id : Modifier un evenement existant
+app.put('/events/:id', upload.single('image'), async (req, res) => {
+    const id = parseEventId(req.params.id);
+    if (id === null) {
+        return res.status(404).json({ error: NOT_FOUND_ERROR });
+    }
+
+    try {
+        const existing = await query(`${EVENT_SELECT} WHERE id = $1`, [id]);
+        if (existing.rowCount === 0) {
+            return res.status(404).json({ error: NOT_FOUND_ERROR });
+        }
+
+        const validation = validateEventPayload(req.body);
+        if (validation.error) {
+            return res.status(400).json({ error: validation.error });
+        }
+
+        const currentEvent = mapEvent(existing.rows[0]);
+        const imageUrl = req.file ? `/uploads/${req.file.filename}` : currentEvent.imageUrl;
+
+        const result = await query(
+            `
+                UPDATE events
+                SET
+                    title = $1,
+                    date = $2,
+                    category = $3,
+                    place = $4,
+                    nb_participants = $5,
+                    image_url = $6
+                WHERE id = $7
+                RETURNING
+                    id,
+                    title,
+                    to_char(date, 'YYYY-MM-DD') AS date,
+                    category,
+                    place,
+                    nb_participants AS "nbParticipants",
+                    image_url AS "imageUrl"
+            `,
+            [
+                validation.event.title,
+                validation.event.date,
+                validation.event.category,
+                validation.event.place,
+                validation.event.nbParticipants,
+                imageUrl,
+                id
+            ]
+        );
+
+        res.json(mapEvent(result.rows[0]));
+    } catch (error) {
+        return handleServerError(res, error);
+    }
+});
+
+// DELETE /events/reset : Vider tous les evenements (tests uniquement)
+app.delete('/events/reset', async (req, res) => {
     if (process.env.NODE_ENV === 'production') {
         return res.status(403).json({ error: 'Interdit en production' });
     }
-    events.length = 0;
-    res.status(204).send();
+
+    try {
+        await query('TRUNCATE TABLE events RESTART IDENTITY');
+        res.status(204).send();
+    } catch (error) {
+        return handleServerError(res, error);
+    }
 });
 
-// DELETE /events/:id : Supprimer un événement
-app.delete('/events/:id', (req, res) => {
-    const id = parseInt(req.params.id);
-    const index = events.findIndex(e => e.id === id);
-
-    if (index === -1) {
-        return res.status(404).json({ error: "Événement introuvable" });
+// DELETE /events/:id : Supprimer un evenement
+app.delete('/events/:id', async (req, res) => {
+    const id = parseEventId(req.params.id);
+    if (id === null) {
+        return res.status(404).json({ error: NOT_FOUND_ERROR });
     }
 
-    events.splice(index, 1);
-    res.status(204).send();
+    try {
+        const result = await query('DELETE FROM events WHERE id = $1', [id]);
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: NOT_FOUND_ERROR });
+        }
+
+        res.status(204).send();
+    } catch (error) {
+        return handleServerError(res, error);
+    }
 });
 
-// Export de l'app (nécessaire pour les tests unitaires sans lancer le serveur)
+// Export de l'app pour les tests unitaires sans lancer le serveur.
 module.exports = app;

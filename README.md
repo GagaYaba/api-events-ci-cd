@@ -131,7 +131,21 @@ http://localhost:3000/events
 
 L’option de démarrage lance PostgreSQL local, puis Node dans une fenêtre CMD séparée. Le menu reste disponible pour ouvrir l’application, redémarrer ou arrêter l’environnement.
 
-Le frontend est disponible sur `http://localhost:3000` et la route santé sur `http://localhost:3000/health`. PostgreSQL local est prêt pour une future évolution, mais le stockage applicatif actuel reste en mémoire pour l’instant.
+Le frontend est disponible sur `http://localhost:3000` et la route santé sur `http://localhost:3000/health`.
+
+L’application utilise PostgreSQL pour stocker les événements. En local, PostgreSQL peut être lancé avec le launcher `start.bat` ou directement avec :
+
+```bash
+docker compose up -d postgres
+```
+
+La variable `DATABASE_URL` est nécessaire. En développement local, `start.bat` définit :
+
+```text
+DATABASE_URL=postgresql://test:test@localhost:5432/test
+```
+
+En staging et production, `DATABASE_URL` doit être configurée dans l’environnement de déploiement. Les événements ne disparaissent plus au redémarrage de Node si le volume PostgreSQL est conservé.
 
 ## Phase 5 — Déploiement staging / production
 
