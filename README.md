@@ -108,6 +108,31 @@ Tester le script de vérification d’environnement en local :
 DATABASE_URL="<production-database-url>" API_PASSWORD="<api-password>" NODE_ENV="production" bash scripts/check-env.sh
 ```
 
+## Lancement local
+
+Double-cliquer sur `start.bat` pour ouvrir le menu local.
+
+Commandes directes :
+
+```bat
+start.bat start
+start.bat stop
+start.bat restart
+start.bat help
+```
+
+URLs utiles :
+
+```text
+http://localhost:3000
+http://localhost:3000/health
+http://localhost:3000/events
+```
+
+L’option de démarrage lance PostgreSQL local, puis Node dans une fenêtre CMD séparée. Le menu reste disponible pour ouvrir l’application, redémarrer ou arrêter l’environnement.
+
+Le frontend est disponible sur `http://localhost:3000` et la route santé sur `http://localhost:3000/health`. PostgreSQL local est prêt pour une future évolution, mais le stockage applicatif actuel reste en mémoire pour l’instant.
+
 ## Phase 5 — Déploiement staging / production
 
 Le workflow `.github/workflows/deploy.yml` configure deux jobs :
@@ -202,12 +227,9 @@ Les captures d’écran ci-dessous présentent les éléments demandés lorsque 
   ![Health](docs/screenshots/13-health-render.png)
 
 * Dashboard UptimeRobot en statut UP
-
-  ![UptimeRobot](docs/screenshots/14-uptimerobot-up.png)
-
 * Monitor UptimeRobot configuré sur `/health`
 
-  Capture à ajouter si nécessaire : `docs/screenshots/15-uptimerobot-health-monitor.png`
+  ![UptimeRobot](docs/screenshots/14-uptimerobot-up.png)
 
 ## Variables d’environnement nécessaires
 
