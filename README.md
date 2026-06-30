@@ -163,6 +163,38 @@ Secrets et environnements à configurer dans GitHub :
 * environnement `production`
 * required reviewer activé
 
+### PostgreSQL sur Render staging
+
+En staging Render, l’application doit être reliée à une base Render PostgreSQL, par exemple `api-events-staging-db`.
+
+Lorsque la base PostgreSQL et le web service Render sont dans le même compte et la même région, utiliser l’Internal Database URL dans les variables d’environnement du service `api-events-staging` :
+
+```text
+DATABASE_URL=<internal-database-url>
+NODE_ENV=production
+API_PASSWORD=<staging-api-password>
+```
+
+Ne jamais écrire la vraie `DATABASE_URL` Render dans le code ou dans le README.
+
+Après redéploiement, vérifier :
+
+```text
+https://api-events-staging.onrender.com/health
+```
+
+La réponse attendue doit contenir `status: "ok"` et `db: "ok"`. Créer ensuite un événement, redémarrer le service Render, puis vérifier que l’événement est toujours présent pour confirmer la persistance PostgreSQL.
+
+Checklist Render staging :
+
+* [x] Base PostgreSQL Render créée
+* [x] `DATABASE_URL` configurée avec l’Internal Database URL
+* [x] `NODE_ENV` configurée
+* [x] `API_PASSWORD` configurée
+* [x] Service staging redéployé
+* [x] `/health` répond 200 avec `db: "ok"`
+* [x] Un événement persiste après redémarrage du service
+
 ## Phase 6 — Observabilité avec UptimeRobot
 
 La route `GET /health` permet de vérifier que l’API est disponible.
@@ -170,6 +202,7 @@ La route `GET /health` permet de vérifier que l’API est disponible.
 Elle retourne un JSON avec :
 
 * `status`
+* `db`
 * `timestamp`
 * `env`
 * `version`
