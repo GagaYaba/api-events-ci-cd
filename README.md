@@ -4,26 +4,9 @@ Projet Node.js / Express réalisé dans le cadre de l’examen pratique CI/CD De
 
 L’objectif du projet est de faire évoluer une API REST existante en ajoutant progressivement des bonnes pratiques DevOps : intégration continue, tests, sécurité, Docker, déploiement et observabilité.
 
-### Phase 0 — Préparation du workflow CI
-
-Le workflow GitHub Actions principal a été préparé et stabilisé.
-
-Modifications réalisées :
-
-* renommage du workflow principal en `.github/workflows/ci.yml`
-* conservation des déclencheurs `push` et `pull_request`
-* utilisation de `actions/setup-node@v4`
-* utilisation de Node.js 20
-* ajout/conservation du cache npm
-* remplacement de `npm install` par `npm ci`
-* conservation des tests backend
-* conservation du job Playwright existant
-
 ## Phase 1 — CI avancée
 
-La CI backend a été améliorée avec une configuration plus complète.
-
-Modifications réalisées :
+La CI backend a été configurée de manière complète.
 
 * ajout d’un service PostgreSQL `postgres:16` dans le job backend
 * ajout d’un healthcheck PostgreSQL avec `pg_isready`
@@ -160,7 +143,7 @@ Le monitor doit etre de type HTTP(s), avec un intervalle de 5 minutes et une ale
 Cette configuration permet de detecter automatiquement si l'API staging devient indisponible.
 
 ## Preuves de validation
-Les captures d’écran ci-dessous présentent les éléments demandés pour l’examen CI/CD DevOps.
+Les captures d’écran ci-dessous présentent les éléments demandés.
 
 * Pipeline CI verte avec cache npm
 ![Pipeline CI](docs/screenshots/01-ci-success.png)
