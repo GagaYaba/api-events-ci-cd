@@ -202,12 +202,9 @@ Les captures d’écran ci-dessous présentent les éléments demandés lorsque 
   ![Health](docs/screenshots/13-health-render.png)
 
 * Dashboard UptimeRobot en statut UP
-
-  ![UptimeRobot](docs/screenshots/14-uptimerobot-up.png)
-
 * Monitor UptimeRobot configuré sur `/health`
 
-  Capture à ajouter si nécessaire : `docs/screenshots/15-uptimerobot-health-monitor.png`
+  ![UptimeRobot](docs/screenshots/14-uptimerobot-up.png)
 
 ## Variables d’environnement nécessaires
 
