@@ -1,111 +1,116 @@
-# API Events — CI/CD DevOps
+# API Events - CI/CD DevOps
 
-Projet Node.js / Express réalisé dans le cadre de l’examen pratique CI/CD DevOps.
+## Présentation
 
-L’objectif du projet est de faire évoluer une API REST existante en ajoutant progressivement des bonnes pratiques DevOps : intégration continue, tests, sécurité, Docker, déploiement et observabilité.
+API Events est une application Node.js / Express réalisée pour l'examen pratique CI/CD DevOps. Le projet expose une API REST, sert un frontend statique et applique progressivement les pratiques attendues : intégration continue, tests, sécurité, Docker, déploiement, observabilité et persistance PostgreSQL.
 
-## Phase 1 — CI avancée
+## Fonctionnalités de l'application
 
-La CI backend a été configurée de manière complète.
+* Création, liste, modification et suppression d'événements.
+* Filtres frontend par catégorie, lieu et date.
+* Upload d'image avec Multer.
+* Stockage persistant des événements dans PostgreSQL.
+* Route de santé `/health` pour vérifier l'API et la base de données.
 
-* ajout d’un service PostgreSQL `postgres:16` dans le job backend
-* ajout d’un healthcheck PostgreSQL avec `pg_isready`
-* ajout des variables d’environnement au niveau du job backend :
+## Stack technique
 
-  * `API_PASSWORD`
-  * `DATABASE_URL`
-  * `NODE_ENV`
-* lancement des tests Jest avec couverture :
+* Node.js 20
+* Express
+* PostgreSQL avec `pg`
+* Multer
+* Jest + Supertest
+* Playwright
+* Docker et Docker Compose
+* GitHub Actions
+* GHCR
+* Trivy
+* Dependabot
+* Render
+* UptimeRobot
 
-  ```bash
-  npm test -- --coverage
-  ```
-* upload du dossier `coverage/` comme artifact GitHub Actions nommé `test-report-backend`
+## Architecture simple
 
-## Phase 2 — Observabilité : route `/health`
+Express sert le frontend statique depuis `public/` et expose les routes API. Les événements sont stockés dans PostgreSQL via `db.js`, qui initialise automatiquement la table `events` si elle n'existe pas.
 
-Une route de vérification de santé de l’API a été ajoutée.
+Le serveur démarre avec `server.js`, appelle `initDb()` avant `app.listen`, puis écoute sur `process.env.PORT || 3000`. La route `/health` vérifie aussi PostgreSQL et retourne `db: "ok"` quand la connexion fonctionne.
 
-Route ajoutée :
+Sur Windows, `start.bat` simplifie le lancement local : il démarre PostgreSQL via Docker Compose, lance Node dans une fenêtre séparée et laisse un menu interactif disponible.
 
-```http
-GET /health
-```
+## Routes principales
 
-Elle retourne un JSON contenant :
+| Méthode | Route | Rôle |
+| --- | --- | --- |
+| `GET` | `/health` | Vérifie l'état de l'API et de PostgreSQL. |
+| `GET` | `/events` | Liste les événements depuis PostgreSQL. |
+| `POST` | `/events` | Crée un événement. |
+| `PUT` | `/events/:id` | Modifie un événement existant. |
+| `DELETE` | `/events/:id` | Supprime un événement existant. |
+| `DELETE` | `/events/reset` | Vide la table pour les tests hors production. |
 
-* `status`
-* `timestamp`
-* `env`
-* `version`
+`/events/reset` est réservé aux tests et renvoie `403` en production.
 
-Exemple de réponse :
+Format API des événements :
 
 ```json
 {
-  "status": "ok",
-  "timestamp": "2026-01-01T12:00:00.000Z",
-  "env": "test",
-  "version": "1.0.0"
+  "id": 1,
+  "title": "Concert",
+  "date": "2099-12-31",
+  "category": "Concert",
+  "place": "Lyon",
+  "nbParticipants": 200,
+  "imageUrl": "/uploads/example.png"
 }
 ```
 
-Un test Supertest a également été ajouté pour vérifier que la route `/health` répond bien avec un code HTTP 200.
+En base, `nb_participants` est renvoyé côté API en `nbParticipants`, et `image_url` en `imageUrl`.
 
-## Phase 3 — Vérification des variables d’environnement
+## Variables d'environnement
 
-Un script de vérification des variables d’environnement a été ajouté.
+Ne jamais écrire de vraies valeurs sensibles dans le repo.
 
-Fichier créé :
+### Local
 
-```bash
-scripts/check-env.sh
+`start.bat` définit les valeurs locales suivantes :
+
+```text
+DATABASE_URL=postgresql://test:test@localhost:5432/test
+NODE_ENV=development
+API_PASSWORD=local-password
 ```
 
-Le script vérifie la présence des variables suivantes :
+Ces valeurs sont réservées au développement local.
 
-* `DATABASE_URL`
-* `API_PASSWORD`
-* `NODE_ENV`
+### CI GitHub Actions
 
-Il est exécuté dans la CI avant les tests backend afin d’échouer rapidement si une variable importante est absente.
+La CI utilise un service PostgreSQL `postgres:16` et attend :
 
-## Phase 4 — Docker / GHCR / Trivy / Dependabot
-
-* Dockerfile présent à la racine du projet.
-* Image Docker publiée sur GHCR avec les tags `latest` et SHA.
-* Scan Trivy visible dans les logs du workflow `build-publish`.
-* Dependabot configuré pour npm et GitHub Actions.
-
-## Commandes utiles
-
-Installer les dépendances :
-
-```bash
-npm ci
+```text
+API_PASSWORD
+DATABASE_URL
+NODE_ENV
 ```
 
-Lancer les tests :
+Le script `scripts/check-env.sh` vérifie ces variables avant les tests backend.
 
-```bash
-npm test
+### Render staging
+
+Le service Render `api-events-staging` doit recevoir :
+
+```text
+DATABASE_URL=<internal-database-url>
+NODE_ENV=production
+API_PASSWORD=<staging-api-password>
 ```
 
-Lancer les tests avec couverture :
+Utiliser l'Internal Database URL lorsque la base PostgreSQL Render et le web service sont dans le même compte et la même région.
 
-```bash
-npm test -- --coverage
-```
+### GitHub Environment staging
 
-## Types de tests
+Le déploiement staging via Render Deploy Hook utilise :
 
-* Tests API : Jest + Supertest, tests d’intégration API sur les routes Express.
-* Tests frontend : Playwright, tests end-to-end simulant les actions utilisateur dans le navigateur.
-
-Tester le script de vérification d’environnement en local :
-
-```bash
-DATABASE_URL="<production-database-url>" API_PASSWORD="<api-password>" NODE_ENV="production" bash scripts/check-env.sh
+```text
+RENDER_DEPLOY_HOOK=<render-deploy-hook-url>
 ```
 
 ## Lancement local
@@ -129,45 +134,73 @@ http://localhost:3000/health
 http://localhost:3000/events
 ```
 
-L’option de démarrage lance PostgreSQL local, puis Node dans une fenêtre CMD séparée. Le menu reste disponible pour ouvrir l’application, redémarrer ou arrêter l’environnement.
+Le démarrage lance PostgreSQL via Docker Compose puis Node dans une fenêtre CMD séparée. Les événements restent présents après redémarrage de Node si le volume PostgreSQL est conservé.
 
-Le frontend est disponible sur `http://localhost:3000` et la route santé sur `http://localhost:3000/health`.
-
-L’application utilise PostgreSQL pour stocker les événements. En local, PostgreSQL peut être lancé avec le launcher `start.bat` ou directement avec :
+## Commandes utiles
 
 ```bash
+npm ci
+npm test -- --coverage
+npm run test:e2e
 docker compose up -d postgres
+docker compose down
 ```
 
-La variable `DATABASE_URL` est nécessaire. En développement local, `start.bat` définit :
+Ne pas utiliser `docker compose down -v` sauf volonté explicite de supprimer le volume PostgreSQL.
 
-```text
-DATABASE_URL=postgresql://test:test@localhost:5432/test
-```
+## Tests
 
-En staging et production, `DATABASE_URL` doit être configurée dans l’environnement de déploiement. Les événements ne disparaissent plus au redémarrage de Node si le volume PostgreSQL est conservé.
+Les tests backend utilisent Jest + Supertest pour couvrir `/health`, `GET /events`, `POST /events`, `PUT /events/:id`, `DELETE /events/:id` et `/events/reset`.
 
-## Phase 5 — Déploiement staging / production
+Les tests frontend utilisent Playwright pour vérifier les principaux parcours navigateur : chargement de page, création, filtres, édition et suppression.
 
-Le workflow `.github/workflows/deploy.yml` configure deux jobs :
+Depuis la phase PostgreSQL, une base PostgreSQL doit être disponible avant les tests. `/events/reset` nettoie la table hors production.
 
-* `deploy-staging` : déclenche automatiquement le déploiement staging via un deploy hook Render.
-* `deploy-production` : dépend du staging avec `needs: deploy-staging` et utilise l’environnement GitHub `production`.
+## CI/CD
 
-La validation manuelle de la production est configurée dans GitHub via les règles de protection de l’environnement `production`.
+### CI avancée
 
-Secrets et environnements à configurer dans GitHub :
+Le workflow `.github/workflows/ci.yml` lance les tests backend et frontend sur `push` et `pull_request`.
 
-* environnement `staging`
-* secret `RENDER_DEPLOY_HOOK=<render-deploy-hook-url>`
-* environnement `production`
-* required reviewer activé
+* `actions/setup-node@v4` avec Node.js 20 et cache npm.
+* Installation avec `npm ci`.
+* Service PostgreSQL `postgres:16` pour les tests backend.
+* Service PostgreSQL `postgres:16` aussi pour Playwright, car `server.js` démarre avec PostgreSQL.
+* Vérification des variables via `scripts/check-env.sh`.
+* Tests backend avec `npm test -- --coverage`.
+* Upload du dossier `coverage/` comme artifact `test-report-backend` avec `if: always()`.
 
-### PostgreSQL sur Render staging
+### Docker / GHCR
 
-En staging Render, l’application doit être reliée à une base Render PostgreSQL, par exemple `api-events-staging-db`.
+Le workflow `.github/workflows/build-publish.yml` construit l'image Docker et la publie sur GHCR.
 
-Lorsque la base PostgreSQL et le web service Render sont dans le même compte et la même région, utiliser l’Internal Database URL dans les variables d’environnement du service `api-events-staging` :
+* Login GHCR avec `GITHUB_TOKEN`.
+* Permission `packages: write`.
+* Tag `latest` pour la dernière image publiée.
+* Tag SHA pour identifier précisément une version de commit.
+* Nom d'image converti en minuscules avant publication.
+
+### DevSecOps
+
+* Trivy scanne l'image Docker publiée.
+* `exit-code: 0` laisse le scan remonter les résultats sans bloquer volontairement le push.
+* Dependabot est configuré pour npm et GitHub Actions.
+* Les secrets sont fournis par GitHub Actions ou Render, jamais écrits en dur.
+
+### Déploiement
+
+Le workflow `.github/workflows/deploy.yml` prévoit :
+
+* déploiement staging via `RENDER_DEPLOY_HOOK` ;
+* environnement GitHub `staging` ;
+* job production dépendant du staging avec `needs: deploy-staging` ;
+* environnement GitHub `production`, prévu pour une approbation manuelle via GitHub Environment.
+
+## PostgreSQL sur Render staging
+
+En staging Render, l'application doit être reliée à une base Render PostgreSQL, par exemple `api-events-staging-db`.
+
+Configuration attendue sur le service `api-events-staging` :
 
 ```text
 DATABASE_URL=<internal-database-url>
@@ -175,31 +208,41 @@ NODE_ENV=production
 API_PASSWORD=<staging-api-password>
 ```
 
-Ne jamais écrire la vraie `DATABASE_URL` Render dans le code ou dans le README.
-
 Après redéploiement, vérifier :
 
 ```text
 https://api-events-staging.onrender.com/health
 ```
 
-La réponse attendue doit contenir `status: "ok"` et `db: "ok"`. Créer ensuite un événement, redémarrer le service Render, puis vérifier que l’événement est toujours présent pour confirmer la persistance PostgreSQL.
+Réponse attendue :
+
+```json
+{
+  "status": "ok",
+  "db": "ok",
+  "timestamp": "2026-01-01T12:00:00.000Z",
+  "env": "production",
+  "version": "1.0.0"
+}
+```
+
+Créer ensuite un événement, redémarrer le service Render, puis vérifier que l'événement est toujours présent pour confirmer la persistance PostgreSQL.
 
 Checklist Render staging :
 
-* [x] Base PostgreSQL Render créée
-* [x] `DATABASE_URL` configurée avec l’Internal Database URL
-* [x] `NODE_ENV` configurée
-* [x] `API_PASSWORD` configurée
-* [x] Service staging redéployé
-* [x] `/health` répond 200 avec `db: "ok"`
-* [x] Un événement persiste après redémarrage du service
+* [ ] Base PostgreSQL Render créée
+* [ ] `DATABASE_URL` configurée avec l'Internal Database URL
+* [ ] `NODE_ENV` configurée
+* [ ] `API_PASSWORD` configurée
+* [ ] Service staging redéployé
+* [ ] `/health` répond 200 avec `db: "ok"`
+* [ ] Un événement persiste après redémarrage du service
 
-## Phase 6 — Observabilité avec UptimeRobot
+## Observabilité
 
-La route `GET /health` permet de vérifier que l’API est disponible.
+La route `GET /health` permet de vérifier l'état de l'API et de PostgreSQL.
 
-Elle retourne un JSON avec :
+Elle retourne :
 
 * `status`
 * `db`
@@ -207,98 +250,23 @@ Elle retourne un JSON avec :
 * `env`
 * `version`
 
-Un monitor UptimeRobot doit être configuré manuellement sur l’URL staging de l’API, avec le chemin `/health`.
-
-Exemple :
+UptimeRobot doit surveiller l'URL staging avec un monitor HTTP(s) :
 
 ```text
 https://<render-staging-url>/health
 ```
 
-Le monitor doit être de type HTTP(s), avec un intervalle de 5 minutes et une alerte email.
+Configuration attendue :
 
-Cette configuration permet de détecter automatiquement si l’API staging devient indisponible.
+* intervalle de 5 minutes ;
+* alerte email activée ;
+* dashboard en statut UP lorsque l'API répond.
 
-## Preuves de validation
-Les captures d’écran ci-dessous présentent les éléments demandés lorsque le fichier PNG est disponible.
+## État actuel
 
-* Pipeline CI verte avec cache npm
-
-  ![Pipeline CI](docs/screenshots/01-ci-success.png)
-  ![Cache npm](docs/screenshots/02-ci-cache-npm.png)
-
-* Service PostgreSQL visible dans la CI
-
-  ![PostgreSQL](docs/screenshots/03-ci-postgres.png)
-  Configuration PostgreSQL : `.github/workflows/ci.yml`
-
-* Tests lancés avec coverage et artifact
-
-  ![Coverage Artifact](docs/screenshots/04-ci-coverage-artifact.png)
-
-* Image Docker publiée sur GHCR
-
-  ![Docker](docs/screenshots/05-ghcr-package-tags.png)
-
-* Scan Trivy
-
-  ![Trivy](docs/screenshots/06-trivy-logs.png)
-
-* Dependabot configuré
-
-  Configuration Dependabot : `.github/dependabot.yml`
-  Capture à ajouter si nécessaire : `docs/screenshots/07-dependabot.png`
-
-* Secrets GitHub Actions créés
-
-  ![Secrets](docs/screenshots/08-github-secrets.png)
-
-* Workflow Deploy déclenché
-
-  ![Workflow](docs/screenshots/09-deploy-workflow.png)
-
-* Déploiement staging via Render Deploy Hook
-
-  ![Render Deploy Hook](docs/screenshots/10-render-deploy-hook.png)
-
-* Production bloquée en attente d’approbation
-
-  ![Waiting approval](docs/screenshots/11-production-waiting-approval.png)
-
-* Production validée manuellement
-
-  ![Approved](docs/screenshots/12-production-approved.png)
-
-* Route `/health` accessible sur Render
-
-  ![Health](docs/screenshots/13-health-render.png)
-
-* Dashboard UptimeRobot en statut UP
-* Monitor UptimeRobot configuré sur `/health`
-
-  ![UptimeRobot](docs/screenshots/14-uptimerobot-up.png)
-
-## Variables d’environnement nécessaires
-
-Pour que la CI et le déploiement fonctionnent correctement, ces valeurs doivent être configurées dans GitHub avec des placeholders, jamais de vraies valeurs dans le repo.
-
-Secrets GitHub Actions :
-
-```text
-API_PASSWORD=<api-password>
-DATABASE_URL=<production-database-url>
-NODE_ENV=production
-```
-
-Secret d’environnement staging :
-
-```text
-RENDER_DEPLOY_HOOK=<render-deploy-hook-url>
-```
-
-Dans GitHub :
-
-```text
-Settings → Secrets and variables → Actions → New repository secret
-```
-
+* CI configurée sur la branche `feat/postgres-ui-local-run`.
+* PostgreSQL local fonctionnel avec Docker Compose.
+* Tests backend attendus avec couverture Jest.
+* Tests Playwright attendus sur le frontend servi par Express.
+* Render staging prêt à valider avec une base PostgreSQL Render et `/health` contenant `db: "ok"`.
+* Aucun vrai secret ne doit être présent dans le repo.
