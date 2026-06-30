@@ -1,6 +1,11 @@
 const request = require('supertest');
 const app = require('../app');
 
+// Tests d'intégration API avec Jest et Supertest.
+beforeEach(async () => {
+    await request(app).delete('/events/reset');
+});
+
 describe('GET /health', () => {
     it('doit retourner status ok avec code 200', async () => {
         const res = await request(app).get('/health');
@@ -117,5 +122,8 @@ describe('DELETE /events/:id', () => {
     it('devrait supprimer un événement existant et retourner 204', async () => {
         const res = await request(app).delete(`/events/${eventId}`);
         expect(res.statusCode).toBe(204);
+
+        const list = await request(app).get('/events');
+        expect(list.body.find(event => event.id === eventId)).toBeUndefined();
     });
 });

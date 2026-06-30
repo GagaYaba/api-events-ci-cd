@@ -70,12 +70,12 @@ Le script vérifie la présence des variables suivantes :
 
 Il est exécuté dans la CI avant les tests backend afin d’échouer rapidement si une variable importante est absente.
 
-## Phase 4 - Docker / GHCR / Trivy / Dependabot
+## Phase 4 — Docker / GHCR / Trivy / Dependabot
 
-* Dockerfile present a la racine du projet.
-* Image Docker publiee sur GHCR avec les tags `latest` et SHA.
+* Dockerfile présent à la racine du projet.
+* Image Docker publiée sur GHCR avec les tags `latest` et SHA.
 * Scan Trivy visible dans les logs du workflow `build-publish`.
-* Dependabot configure pour npm et GitHub Actions.
+* Dependabot configuré pour npm et GitHub Actions.
 
 ## Commandes utiles
 
@@ -97,31 +97,36 @@ Lancer les tests avec couverture :
 npm test -- --coverage
 ```
 
+## Types de tests
+
+* Tests API : Jest + Supertest, tests d’intégration API sur les routes Express.
+* Tests frontend : Playwright, tests end-to-end simulant les actions utilisateur dans le navigateur.
+
 Tester le script de vérification d’environnement en local :
 
 ```bash
 DATABASE_URL="<production-database-url>" API_PASSWORD="<api-password>" NODE_ENV="production" bash scripts/check-env.sh
 ```
 
-## Phase 5 - Deploiement staging / production
+## Phase 5 — Déploiement staging / production
 
 Le workflow `.github/workflows/deploy.yml` configure deux jobs :
 
-* `deploy-staging` : declenche automatiquement le deploiement staging via un deploy hook Render.
-* `deploy-production` : depend du staging avec `needs: deploy-staging` et utilise l'environnement GitHub `production`.
+* `deploy-staging` : déclenche automatiquement le déploiement staging via un deploy hook Render.
+* `deploy-production` : dépend du staging avec `needs: deploy-staging` et utilise l’environnement GitHub `production`.
 
-La validation manuelle de la production est configuree dans GitHub via les regles de protection de l'environnement `production`.
+La validation manuelle de la production est configurée dans GitHub via les règles de protection de l’environnement `production`.
 
-Secrets et environnements a configurer dans GitHub :
+Secrets et environnements à configurer dans GitHub :
 
 * environnement `staging`
 * secret `RENDER_DEPLOY_HOOK=<render-deploy-hook-url>`
 * environnement `production`
-* required reviewer active
+* required reviewer activé
 
-## Phase 6 - Observabilite avec UptimeRobot
+## Phase 6 — Observabilité avec UptimeRobot
 
-La route `GET /health` permet de verifier que l'API est disponible.
+La route `GET /health` permet de vérifier que l’API est disponible.
 
 Elle retourne un JSON avec :
 
@@ -130,7 +135,7 @@ Elle retourne un JSON avec :
 * `env`
 * `version`
 
-Un monitor UptimeRobot doit etre configure manuellement sur l'URL staging de l'API, avec le chemin `/health`.
+Un monitor UptimeRobot doit être configuré manuellement sur l’URL staging de l’API, avec le chemin `/health`.
 
 Exemple :
 
@@ -138,60 +143,75 @@ Exemple :
 https://<render-staging-url>/health
 ```
 
-Le monitor doit etre de type HTTP(s), avec un intervalle de 5 minutes et une alerte email.
+Le monitor doit être de type HTTP(s), avec un intervalle de 5 minutes et une alerte email.
 
-Cette configuration permet de detecter automatiquement si l'API staging devient indisponible.
+Cette configuration permet de détecter automatiquement si l’API staging devient indisponible.
 
 ## Preuves de validation
-Les captures d’écran ci-dessous présentent les éléments demandés.
+Les captures d’écran ci-dessous présentent les éléments demandés lorsque le fichier PNG est disponible.
 
 * Pipeline CI verte avec cache npm
-![Pipeline CI](docs/screenshots/01-ci-success.png)
-![Cache npm](docs/screenshots/02-ci-cache-npm.png)
 
-* Service PostgreSQL visible dans les logs CI
-![PostgreSQL](.github/workflows/ci.yml)
-![PostgreSQL](docs/screenshots/03-ci-postgres.png)
+  ![Pipeline CI](docs/screenshots/01-ci-success.png)
+  ![Cache npm](docs/screenshots/02-ci-cache-npm.png)
 
-* Tests lances avec coverage
-* Artifact `test-report-backend` visible dans GitHub Actions
-![Coverage Artifact](docs/screenshots/04-ci-coverage-artifact.png)
+* Service PostgreSQL visible dans la CI
 
-* Image Docker publiee sur GHCR avec les tags `latest` et SHA
-![Docker](docs/screenshots/05-ghcr-package-tags.png)
+  ![PostgreSQL](docs/screenshots/03-ci-postgres.png)
+  Configuration PostgreSQL : `.github/workflows/ci.yml`
 
-* Scan Trivy visible dans les logs
-![Trivy](docs/screenshots/06-trivy-logs.png)
+* Tests lancés avec coverage et artifact
 
-* Dependabot configure
-![Dependabot configure](.github/dependabot.yml)
+  ![Coverage Artifact](docs/screenshots/04-ci-coverage-artifact.png)
 
-* Secrets GitHub Actions crees
-![Secrets](docs/screenshots/08-github-secrets.png)
+* Image Docker publiée sur GHCR
 
-* Workflow Deploy declenche
-![Workflow](docs/screenshots/09-deploy-workflow.png)
+  ![Docker](docs/screenshots/05-ghcr-package-tags.png)
 
-* Deploiement staging reussi via Render Deploy Hook
-![Render Deploy Hook](docs/screenshots/10-render-deploy-hook.png)
+* Scan Trivy
 
-* Production bloquee en attente d'approbation
-![Waiting approval](docs/screenshots/11-production-waiting-approval.png)
+  ![Trivy](docs/screenshots/06-trivy-logs.png)
 
-* Production validee manuellement
-![Approved](docs/screenshots/12-production-approved.png)
+* Dependabot configuré
+
+  Configuration Dependabot : `.github/dependabot.yml`
+  Capture à ajouter si nécessaire : `docs/screenshots/07-dependabot.png`
+
+* Secrets GitHub Actions créés
+
+  ![Secrets](docs/screenshots/08-github-secrets.png)
+
+* Workflow Deploy déclenché
+
+  ![Workflow](docs/screenshots/09-deploy-workflow.png)
+
+* Déploiement staging via Render Deploy Hook
+
+  ![Render Deploy Hook](docs/screenshots/10-render-deploy-hook.png)
+
+* Production bloquée en attente d’approbation
+
+  ![Waiting approval](docs/screenshots/11-production-waiting-approval.png)
+
+* Production validée manuellement
+
+  ![Approved](docs/screenshots/12-production-approved.png)
 
 * Route `/health` accessible sur Render
-![Health](docs/screenshots/13-health-render.png)
+
+  ![Health](docs/screenshots/13-health-render.png)
 
 * Dashboard UptimeRobot en statut UP
-* Monitor UptimeRobot configure sur `/health`
-![UptimeRobot](docs/screenshots/14-uptimerobot-up.png)
 
+  ![UptimeRobot](docs/screenshots/14-uptimerobot-up.png)
+
+* Monitor UptimeRobot configuré sur `/health`
+
+  Capture à ajouter si nécessaire : `docs/screenshots/15-uptimerobot-health-monitor.png`
 
 ## Variables d’environnement nécessaires
 
-Pour que la CI et le deploiement fonctionnent correctement, ces valeurs doivent etre configurees dans GitHub avec des placeholders, jamais de vraies valeurs dans le repo.
+Pour que la CI et le déploiement fonctionnent correctement, ces valeurs doivent être configurées dans GitHub avec des placeholders, jamais de vraies valeurs dans le repo.
 
 Secrets GitHub Actions :
 
@@ -201,7 +221,7 @@ DATABASE_URL=<production-database-url>
 NODE_ENV=production
 ```
 
-Secret d'environnement staging :
+Secret d’environnement staging :
 
 ```text
 RENDER_DEPLOY_HOOK=<render-deploy-hook-url>

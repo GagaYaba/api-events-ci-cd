@@ -1,5 +1,6 @@
 const { test, expect } = require('@playwright/test');
 
+// Tests end-to-end avec Playwright.
 const FUTURE_DATE = '2099-12-31';
 
 // Réinitialise les événements côté serveur avant chaque test
