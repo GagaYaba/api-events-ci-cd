@@ -2,6 +2,7 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
+const db = require('./db');
 const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -27,13 +28,23 @@ const upload = multer({
 
 const events = [];
 
-app.get('/health', (req, res) => {
-    res.status(200).json({
-        status: 'ok',
+function buildHealthResponse(status, dbStatus) {
+    return {
+        status,
+        db: dbStatus,
         timestamp: new Date().toISOString(),
         env: process.env.NODE_ENV || 'development',
         version: process.env.npm_package_version || '1.0.0'
-    });
+    };
+}
+
+app.get('/health', async (req, res) => {
+    try {
+        await db.query('SELECT 1');
+        res.status(200).json(buildHealthResponse('ok', 'ok'));
+    } catch {
+        res.status(503).json(buildHealthResponse('error', 'error'));
+    }
 });
 
 app.get('/events', (req, res) => {

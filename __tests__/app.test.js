@@ -1,9 +1,20 @@
 const request = require('supertest');
+
+jest.mock('../db', () => ({
+    query: jest.fn()
+}));
+
+const db = require('../db');
 const app = require('../app');
 
 // Tests d'intégration API avec Jest et Supertest.
 beforeEach(async () => {
+    db.query.mockResolvedValue({ rows: [{ '?column?': 1 }] });
     await request(app).delete('/events/reset');
+});
+
+afterEach(() => {
+    jest.clearAllMocks();
 });
 
 describe('GET /health', () => {
@@ -12,9 +23,25 @@ describe('GET /health', () => {
 
         expect(res.statusCode).toBe(200);
         expect(res.body.status).toBe('ok');
+        expect(res.body.db).toBe('ok');
         expect(res.body.timestamp).toBeDefined();
         expect(res.body.env).toBeDefined();
         expect(res.body.version).toBeDefined();
+        expect(db.query).toHaveBeenCalledWith('SELECT 1');
+    });
+
+    it('doit retourner status error avec code 503 si PostgreSQL ne repond pas', async () => {
+        db.query.mockRejectedValueOnce(new Error('Database unavailable'));
+
+        const res = await request(app).get('/health');
+
+        expect(res.statusCode).toBe(503);
+        expect(res.body.status).toBe('error');
+        expect(res.body.db).toBe('error');
+        expect(res.body.timestamp).toBeDefined();
+        expect(res.body.env).toBeDefined();
+        expect(res.body.version).toBeDefined();
+        expect(res.body.error).toBeUndefined();
     });
 });
 
